@@ -1,1 +1,8 @@
-hahlllnn
+-- 添加空节点
+-- declare @xml xml;
+-- declare @count int;
+-- set @xml = '<root><code></code><message></message><data>1</data></root>';
+-- set @count =    @xml.value('count(/root/data)','int');
+-- if @count < 2 
+-- set @xml.modify('insert <data></data> as last into (/root)[1]');
+-- declare @instr varchar(max);

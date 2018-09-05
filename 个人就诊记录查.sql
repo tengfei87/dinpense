@@ -23,10 +23,13 @@ CREATE PROCEDURE BSOFT_MOB_GET_VISITRECORD
 	@outstr xml output
 
 AS
+declare @outstr xml;
 declare @orgid varchar(20);
 declare @patientid varchar(max);
 declare @xmldoc xml;
 declare @data xml;
+declare @message varchar(max);
+declare @patientId_t table(patientId numeric(18));
 BEGIN
 	-- SET NOCOUNT ON added to prevent extra result sets from
 	-- interfering with SELECT statements.
@@ -34,9 +37,14 @@ BEGIN
 	--医院代码	HospitalCode	Y
 	--患者唯一号列表	patientCodeList	Y	患者在平台绑定多个档案时，传入多个唯一号，数据用逗号隔开。
     -- Insert statements for procedure here
-	set @xmldoc = @instr;
-    set @orgid = @xmldoc.VALUE('(/data/hospitalCode)[1]','varchar(20)');
-	set @patientid = @xmldoc.VALUE('(/data/patientCodeList)[1]','varchar(max)');
+	
+	
+	set @xmldoc = '<data><hospitalCode>1</hospitalCode><patientCodeList>6388605</patientCodeList><patientCodeList>6388610</patientCodeList></data>';
+	set @orgid = @xmldoc.value('(/data/hospitalCode)[1]','varchar(20)');
+	set @patientid = @xmldoc.value('(/data/patientCodeList)[1]','varchar(max)');
+	insert into @patientId_t select c.value('.','varchar(18)') from @xmldoc.nodes('/data/patientCodeList') T(c)
+	
+	-- select @patientid
 	BEGIN TRY
 	set @data = (
 			select 
@@ -47,7 +55,7 @@ BEGIN
 			ksdm departmentCode,
 			(select ksmc from gy_ksdm where ksdm = ys_mz_jzls.KSDM) departmentName,
 			(select ygxm from gy_ygdm where ygdm = ys_mz_jzls.YSDM) doctorName,
-			(select convert(varchar(4),row_number() OVER(ORDER BY jlbh))+ '.' + jbmc + ';'   from ys_mz_jbzd where jzxh = 31545 for xml path('')) diagnsisName,
+			(select convert(varchar(4),row_number() OVER(ORDER BY jlbh))+ '.' + jbmc + ';'   from ys_mz_jbzd where jzxh = ys_mz_jzls.jzxh for xml path('')) diagnsisName,
 			convert(xml,(select
 			(select ypmc from yk_typk where ypxh = ms_cf02.ypxh) drugName,
 			(select ypmc from yk_typk where ypxh = ms_cf02.ypxh) specifiation,
@@ -57,30 +65,31 @@ BEGIN
 			(select XMMC from zy_ypyf where ypyf = ms_cf02.GYTJ) usage
 			from ms_cf01,ms_cf02 where ms_cf01.cfsb = ms_cf02.cfsb and ms_cf01.jzxh = ys_mz_jzls.jzxh for xml path('drugItem'))) 
 			from ys_mz_jzls
-			where brbh in( @patientid  ) for xml path ('data'),root('root'))
+			where brbh in ( select patientId from @patientId_t ) for xml path ('data'))
 	END TRY
 	BEGIN CATCH
 		SET @message =  ERROR_MESSAGE();
 		GOTO p_error
 
 	END CATCH
-	--只有一条数据时处理
-	IF (  @data.exist('(/root/data)[2]') = 0) 
-	BEGIN
-		SET @data = convert(text,@data) + '<data></data>'
-		
-
-
-
-	END
-	 
-	SET @outstr =  (SELECT 1 'code',@message 'message',@data 'data' FOR XML PATH(''));
-	return 1
-	 p_error:
-	 SET @outstr =  (SELECT -1 'code',@message 'message','' 'data' FOR XML PATH(''));
-	 return 0
-
 	
+	
+	SET @outstr =  (SELECT 1 'code', isnull(@message,'') 'message',isnull(@data,'') FOR XML PATH('root'));
+	
+	
+	--只有一条数据时处理
+	IF (  @outstr.value('count(/root/data)','int')  < 2 ) 
+	BEGIN
+		SET @outstr.modify('insert <data></data> as last into (/root)[1]')
+		
+	END
+    return 1
+	
+
+
+    p_error:
+    SET @outstr =  (SELECT -1 'code', isnull(@message,'') 'message','' 'data' FOR XML PATH('root'));
+    return -1
 END
 
 GO 
