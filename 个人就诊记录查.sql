@@ -1,29 +1,14 @@
--- ================================================
--- Template generated from Template Explorer using:
--- Create Procedure (New Menu).SQL
---
--- Use the Specify Values for Template Parameters 
--- command (Ctrl-Shift-M) to fill in the parameter 
--- values below.
---
--- This block of comments will not be included in
--- the definition of the procedure.
--- ================================================
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
 -- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
 -- Description:	<Description,,>
 -- =============================================
-CREATE PROCEDURE BSOFT_MOB_GET_VISITRECORD 
+ALTER PROCEDURE BSOFT_MOB_GET_VISITRECORD 
 	@instr varchar(max),
 	@outstr xml output
 
 AS
-declare @outstr xml;
+
 declare @orgid varchar(20);
 declare @patientid varchar(max);
 declare @xmldoc xml;
@@ -34,17 +19,16 @@ BEGIN
 	-- SET NOCOUNT ON added to prevent extra result sets from
 	-- interfering with SELECT statements.
 	SET NOCOUNT ON;
+	-- 入参说明
 	--医院代码	HospitalCode	Y
 	--患者唯一号列表	patientCodeList	Y	患者在平台绑定多个档案时，传入多个唯一号，数据用逗号隔开。
-    -- Insert statements for procedure here
-	
-	
-	set @xmldoc = '<data><hospitalCode>1</hospitalCode><patientCodeList>6388605</patientCodeList><patientCodeList>6388610</patientCodeList></data>';
+    --set @xmldoc = '<data><hospitalCode>1</hospitalCode><patientCodeList>6388605</patientCodeList><patientCodeList>6388610</patientCodeList></data>';
+	set @xmldoc = @instr
 	set @orgid = @xmldoc.value('(/data/hospitalCode)[1]','varchar(20)');
 	set @patientid = @xmldoc.value('(/data/patientCodeList)[1]','varchar(max)');
 	insert into @patientId_t select c.value('.','varchar(18)') from @xmldoc.nodes('/data/patientCodeList') T(c)
 	
-	-- select @patientid
+	
 	BEGIN TRY
 	set @data = (
 			select 
@@ -59,7 +43,7 @@ BEGIN
 			convert(xml,(select
 			(select ypmc from yk_typk where ypxh = ms_cf02.ypxh) drugName,
 			(select ypmc from yk_typk where ypxh = ms_cf02.ypxh) specifiation,
-			ms_cf02.ypsl quantity,
+			convert(varchar(18),ms_cf02.ypsl) + ms_cf02.YFDW quantity,
 			convert(varchar(8),ms_cf02.ycjl) + ((select jldw from yk_typk where ypxh = ms_cf02.ypxh)) onesDose,
 			(select PCMC from GY_SYPC where pcbm = ms_cf02.YPYF and jgid  = 0 ) frequency,
 			(select XMMC from zy_ypyf where ypyf = ms_cf02.GYTJ) usage
