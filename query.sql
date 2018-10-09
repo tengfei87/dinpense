@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE usp_APP_recipeOrderQuery(xmlParm in varchar2, sReturn out clob)
+CREATE OR REPLACE PROCEDURE usp_APP_recipeOrderQuery(xmlParm in varchar2, sReturn out clob) return number
 is
 --处方购买记录查询
 
@@ -17,41 +17,41 @@ BEGIN
            ,EXTRACTVALUE(VALUE(t),'/body/patientCode')   
            ,EXTRACTVALUE(VALUE(t),'/body/orderStatus')                               
            INTO v_orgid,v_patid,v_orderstatus
-    FROM TABLE(XMLSEQUENCE(EXTRACT(v_xml, '/body'))) t;    -- 提取XML节点值
-        
+    FROM TABLE(XMLSEQUENCE(EXTRACT(v_xml, '/body'))) t;    -- 提取XML节点值      
    
     v_xmlhdl:=dbms_xmlgen.newcontext('select
-	orderNo,
-	orderDate,
-	orderStatus,
-	payStatus,
-	dispenseWay,
-	receiverAddress,
-	consigneeName,
-	consigneeCall,
-	boilSign,
-	recipeLifetime,
-	recipeinfo(identificationNumber) sumDescription,
-	recipedetail(identificationNumber) drugDetail	
-where recipe_order
-where patientcode in (:v_patid0)
-and orderStatus = :v_orderstatus0');
+        orderNo,
+        orderDate,
+        orderStatus,
+        payStatus,
+        dispenseWay,
+        receiverAddress,
+        consigneeName,
+        consigneeCall,
+        boilSign,
+        recipeLifetime,
+        recipeinfo(identificationNumber) ,
+        recipedetail(identificationNumber) 	
+    where recipe_order
+    where patientcode in (select column_value  from table(p_split(v_patid0)) t )
+    and orderStatus = :v_orderstatus0');
     dbms_xmlgen.setbindvalue(v_xmlhdl,'v_patid0',v_patid);
     dbms_xmlgen.setbindvalue(v_xmlhdl,'v_orderstatus0',v_orderstatus);                    
-    --dbms_xmlgen.setrowsettag(v_xmlhdl,'data');
+    dbms_xmlgen.setrowsettag(v_xmlhdl,'root');
     dbms_xmlgen.setrowtag(v_xmlhdl,'data');
     dbms_xmlgen.setnullhandling(v_xmlhdl,dbms_xmlgen.EMPTY_TAG);
     v_xmltext:=dbms_xmlgen.getXML(v_xmlhdl);
     dbms_xmlgen.closecontext(v_xmlhdl);   
     end if;          
-    if v_xmltext is null  then
-    ireturn:=-1;
-    sReturn:='没有符合条件的信息';
-    else
-    ireturn:=0;
-    sReturn:=v_xmltext;
+    if v_xmltext is null  then        
+        sReturn:='没有符合条件的信息';
+        return 0
+    else        
+        sReturn:=v_xmltext;
     end if ;
-                
-           
-       
- END  usp_APP_Doctorsch_Query;
+    return 1 
+ END  usp_APP_recipeOrderQuery;
+
+
+
+
