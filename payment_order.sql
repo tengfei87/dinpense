@@ -1,0 +1,8 @@
+ALTER TABLE ms_cf01 add orderid number(18,0) null;
+
+CREATE SEQUENCE t_payment_order_seq 
+INCREMENT BY 1 
+START WITH 1 
+NOMAXvalue 999999999999999999
+NOCYCLE 
+;
